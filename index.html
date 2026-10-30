@@ -1,0 +1,163 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#210d16">
+  <title>Oiko-Librium 2027 | Students' Meet</title>
+  <meta name="description" content="Oiko-Librium 2027, the Economics Students' Meet at Ramakrishna Mission Vidyamandira, Belur Math.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="navbar">
+  <a class="brand" href="#">
+    <span class="brand-mark">OL</span>
+    <span>OIKO-LIBRIUM <small>2027 · ECONOMICS</small></span>
+  </a>
+  <nav>
+    <a href="#about">About</a>
+    <a href="#events">Events</a>
+    <a href="#venue">Venue</a>
+    <a href="#register" class="nav-button">Register</a>
+  </nav>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="hero-content">
+      <p class="eyebrow">DEPARTMENT OF ECONOMICS · RKM VIDYAMANDIRA</p>
+      <h1>Where theory<br>meets the <span>market.</span></h1>
+      <p class="hero-description">
+        Ideas, intellect, competition and creativity.
+        Welcome to Oiko-Librium 2027, our inter-college
+        Economics Students' Meet.
+      </p>
+      <div class="hero-actions">
+        <a href="#events" class="button primary">Explore events ↗</a>
+        <a href="#about" class="button secondary">Discover the fest</a>
+      </div>
+      <p class="hero-note">BELUR MATH · HOWRAH · WEST BENGAL</p>
+    </div>
+
+    <div class="hero-visual">
+      <div class="orbit orbit-one"></div>
+      <div class="orbit orbit-two"></div>
+      <div class="equilibrium">
+        <span>MARKET</span>
+        <strong>EQ</strong>
+        <small>2027</small>
+      </div>
+      <span class="floating-tag tag-one">DEMAND</span>
+      <span class="floating-tag tag-two">SUPPLY</span>
+      <span class="floating-tag tag-three">EQUILIBRIUM</span>
+    </div>
+  </section>
+
+  <section class="ticker">
+    <span>THINK</span><i>✦</i><span>QUESTION</span><i>✦</i>
+    <span>COMPETE</span><i>✦</i><span>CREATE</span><i>✦</i>
+    <span>THINK</span><i>✦</i><span>QUESTION</span>
+  </section>
+
+  <section class="section about" id="about">
+    <p class="eyebrow">01 / THE IDEA</p>
+    <h2>Economics is not just a subject.<br><span>It's everywhere.</span></h2>
+    <p>
+      Oiko-Librium is the first inter-college fest of the
+      Department of Economics, Ramakrishna Mission
+      Vidyamandira. It brings together curious minds to
+      explore markets, debate ideas, test knowledge and
+      discover the economics behind everyday life.
+    </p>
+  </section>
+
+  <section class="section events" id="events">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">02 / THE COMPETITIONS</p>
+        <h2>Choose your <span>arena.</span></h2>
+      </div>
+      <p>Eight events. Different skills. One celebration of ideas.</p>
+    </div>
+    <div class="event-grid" id="eventGrid"></div>
+  </section>
+
+  <section class="section register-section" id="register">
+    <p class="eyebrow">03 / PARTICIPANT REGISTRATION</p>
+    <h2>Make your <span>move.</span></h2>
+    <p class="section-intro">
+      Submit your team details and participant information below.
+    </p>
+
+    <form id="registrationForm">
+      <div class="form-grid">
+        <label>
+          Select event *
+          <select id="eventId" required>
+            <option value="">Choose an event</option>
+          </select>
+        </label>
+        <label>
+          Team name *
+          <input id="teamName" required maxlength="80"
+            placeholder="Enter your team name">
+        </label>
+        <label>
+          Team leader's full name *
+          <input id="leaderName" required maxlength="100"
+            placeholder="Full name">
+        </label>
+        <label>
+          College / Institution *
+          <input id="college" required maxlength="150"
+            placeholder="Name of your college">
+        </label>
+      </div>
+
+      <div class="participant-heading">
+        <h3>Participant details</h3>
+        <button type="button" class="button secondary small"
+          id="addParticipant">+ Add participant</button>
+      </div>
+
+      <div id="participants"></div>
+
+      <label class="consent">
+        <input type="checkbox" id="consent" required>
+        <span>
+          I confirm that the information submitted is accurate
+          and agree to the organisers using it for fest
+          registration and communication.
+        </span>
+      </label>
+
+      <button class="button primary submit-button" id="submitButton"
+        type="submit">Submit registration ↗</button>
+      <p id="formMessage" role="status"></p>
+    </form>
+  </section>
+
+  <section class="section venue" id="venue">
+    <p class="eyebrow">04 / THE VENUE</p>
+    <h2>Meet us at <span>Belur.</span></h2>
+    <p>Ramakrishna Mission Vidyamandira, Belur Math, Howrah, West Bengal 711202.</p>
+    <a class="button secondary"
+      href="https://www.google.com/maps/search/?api=1&query=Ramakrishna+Mission+Vidyamandira+Belur+Math"
+      target="_blank" rel="noopener">Find the venue ↗</a>
+  </section>
+</main>
+
+<footer>
+  <div class="brand">
+    <span class="brand-mark">OL</span>
+    <span>OIKO-LIBRIUM <small>2027</small></span>
+  </div>
+  <p>Event Organiser: Dept of Economics, RKM Vidyamandira</p>
+  <p>© RKMVM</p>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
