@@ -1,593 +1,203 @@
 
-/*
-  Oiko-Librium 2027 registration frontend.
-  Connected to the confirmed Apps Script deployment.
-*/
-const CONFIG = {
-  API_URL: "https://script.google.com/macros/s/AKfycbycAuVsLOc6PAJpDBS5pZlXOJWDBMtj3V5KUUYKduuTpljYh8dxI8z_X-8xPMsQRraVGLg/exec",
-  MAX_ID_BYTES: 1 * 1024 * 1024,
-  MAX_TOTAL_FILE_BYTES: 4 * 1024 * 1024,
-  RESPONSE_TIMEOUT: 90000
-};
-
-// Event IDs must match the Apps Script backend.
-const EVENTS = [
-  {id:"bandopolis",name:"Bandopolis",category:"BRAND WAR",description:"Pit two competing brands against each other. Build your argument, defend your brand and answer the jury.",team:"2 members",mode:"On campus",min:2,max:2},
-  {id:"answer_tainity",name:"Answer-tainity",category:"GENERAL QUIZ",description:"A general quiz with an economics streak. Written preliminaries followed by a stage final for the top six teams.",team:"1–3 members",mode:"On campus",min:1,max:3},
-  {id:"diplomacia",name:"Diplomacia",category:"MODEL UNITED NATIONS",description:"Represent a nation in a simulated General Assembly. Debate, negotiate and draft resolutions.",team:"2–3 members",mode:"On campus",min:2,max:3},
-  {id:"bid_o_nomics",name:"Bid-o-nomics",category:"MOCK CRICKET AUCTION",description:"Build your dream cricket squad with a virtual ₹120 crore purse after qualifying through a cricket quiz.",team:"1–3 members",mode:"On campus",min:1,max:3},
-  {id:"wunderkammer",name:"Wunderkammer",category:"PAPER PRESENTATION",description:"Present original economic research. Eight minutes of presentation followed by two minutes of questions.",team:"1–3 members",mode:"On campus",min:1,max:3},
-  {id:"pen_thesis",name:"Pen-thesis",category:"ESSAY WRITING",description:"Explore one of the announced topics through a thoughtful written submission.",team:"Individual",mode:"Online",min:1,max:1},
-  {id:"chromanomics",name:"Chromanomics",category:"PHOTOGRAPHY",description:"Capture how markets and money shape everyday life through your photographic perspective.",team:"Individual",mode:"Online",min:1,max:1},
-  {id:"cinemanimics",name:"Cinemanimics",category:"SHORT FILM",description:"Create a short film of 3–5 minutes based on one of the announced topics.",team:"1–5 members",mode:"Online",min:1,max:5}
-];
-
-const eventGrid = document.getElementById("eventGrid");
-const eventSelect = document.getElementById("eventId");
-const participantContainer = document.getElementById("participants");
-const form = document.getElementById("registrationForm");
-const addButton = document.getElementById("addParticipant");
-
-EVENTS.forEach((event,index) => {
-  const card = document.createElement("article");
-  card.className = "event-card";
-  card.innerHTML = `
-    <span class="event-number">EVENT 0${index+1} / ${event.category}</span>
-    <h3>${event.name}</h3>
-    <p>${event.description}</p>
-    <div class="event-meta">${event.team} · ${event.mode}</div>
-    <button type="button" data-event="${event.id}">Register for this event ↗</button>
-  `;
-  eventGrid.appendChild(card);
-
-  const option = document.createElement("option");
-  option.value = event.id;
-  option.textContent = event.name;
-  eventSelect.appendChild(option);
-});
-
-function selectedEvent() {
-  return EVENTS.find(item => item.id === eventSelect.value);
-}
-
-function updateParticipantLimit() {
-  const chosen = selectedEvent();
-  const max = chosen ? chosen.max : 5;
-
-  addButton.disabled = participantContainer.children.length >= max;
-  addButton.textContent = addButton.disabled
-    ? "Maximum participants reached"
-    : "+ Add participant";
-}
-
-eventGrid.addEventListener("click",event => {
-  const button = event.target.closest("[data-event]");
-  if (!button) return;
-
-  eventSelect.value = button.dataset.event;
-  updateParticipantLimit();
-  document.getElementById("register").scrollIntoView({behavior:"smooth"});
-});
-
-function addParticipant() {
-  const chosen = selectedEvent();
-  const max = chosen ? chosen.max : 5;
-  const count = participantContainer.children.length;
-
-  if (count >= max) {
-    alert(`This event allows a maximum of ${max} participant(s).`);
-    return;
-  }
-
-  const card = document.createElement("div");
-  card.className = "participant";
-
-  card.innerHTML = `
-    <div class="participant-title">PARTICIPANT ${count+1} — ${count === 0 ? "TEAM LEADER" : "MEMBER"}</div>
-
-    <label>Full name *
-      <input name="name" required maxlength="100" autocomplete="name">
-    </label>
-
-    <label>Age *
-      <input name="age" type="number" required min="1" max="100" step="1" inputmode="numeric">
-    </label>
-
-    <label>Department *
-      <input name="department" required maxlength="100">
-    </label>
-
-    <label>Phone number *
-      <input name="phone" type="tel" required maxlength="20" autocomplete="tel" pattern="[0-9 +()-]{10,20}">
-    </label>
-
-    <label>Email address *
-      <input name="email" type="email" required maxlength="150" autocomplete="email">
-    </label>
-
-    <label>Gender *
-      <select name="gender" required>
-        <option value="">Select gender</option>
-        <option>Male</option>
-        <option>Female</option>
-        <option>Other</option>
-        <option>Prefer not to say</option>
-      </select>
-    </label>
-
-    <label>Meal preference *
-      <select name="meal" required>
-        <option value="">Select preference</option>
-        <option value="Veg">Vegetarian</option>
-        <option value="Non-veg">Non-vegetarian</option>
-      </select>
-    </label>
-
-    <label>College ID card (JPG, PNG or PDF; max 1 MB) *
-      <input name="idProof" type="file" accept="image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf" required>
-    </label>
-
-    <button class="button secondary small remove-participant" type="button">Remove participant</button>
-  `;
-
-  card.querySelector(".remove-participant").addEventListener("click",() => {
-    card.remove();
-    renumberParticipants();
-    updateParticipantLimit();
-  });
-
-  participantContainer.appendChild(card);
-  renumberParticipants();
-  updateParticipantLimit();
-}
-
-function renumberParticipants() {
-  [...participantContainer.children].forEach((card,index) => {
-    card.querySelector(".participant-title").textContent =
-      `PARTICIPANT ${index+1} — ${index === 0 ? "TEAM LEADER" : "MEMBER"}`;
-  });
-}
-
-function readFileAsDataUrl(file) {
-  return new Promise((resolve,reject) => {
-    const reader = new FileReader();
-
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(
-      new Error(`Could not read ${file.name}. Please choose it again.`)
-    );
-
-    reader.readAsDataURL(file);
-  });
-}
-
-addButton.addEventListener("click",addParticipant);
-
-eventSelect.addEventListener("change",() => {
-  const chosen = selectedEvent();
-  const count = participantContainer.children.length;
-
-  if (chosen && count > chosen.max) {
-    alert(`This event allows at most ${chosen.max} participant(s). Please remove the extra participant(s).`);
-  }
-
-  updateParticipantLimit();
-});
-
-addParticipant();
-
-async function makeParticipantCode(registrationId,participant) {
-  const source = [
-    registrationId,
-    participant.name.trim().toLowerCase(),
-    String(participant.age),
-    participant.department.trim().toLowerCase()
-  ].join("|");
-
-  const bytes = new TextEncoder().encode(source);
-  const digest = await crypto.subtle.digest("SHA-256",bytes);
-
-  const hex = [...new Uint8Array(digest)]
-    .map(value => value.toString(16).padStart(2,"0"))
-    .join("")
-    .toUpperCase();
-
-  return "OL27-" + hex.slice(0,12);
-}
-
-function escapeHtml(value) {
-  return String(value ?? "").replace(/[&<>"']/g,character => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;"
-  })[character]);
-}
-
-async function showRegistrationConfirmation(registrationId,chosen,teamName,college,participants) {
-  const formSection = document.getElementById("register");
-  let confirmation = document.getElementById("registrationConfirmation");
-
-  if (!confirmation) {
-    confirmation = document.createElement("section");
-    confirmation.id = "registrationConfirmation";
-    confirmation.className = "section";
-    confirmation.style.cssText = "background:#190b12;min-height:80vh;";
-    formSection.insertAdjacentElement("afterend",confirmation);
-  }
-
-  const cards = [];
-
-  for (const participant of participants) {
-    const code = await makeParticipantCode(registrationId,participant);
-    cards.push({...participant,code});
-  }
-
-  confirmation.innerHTML = `
-    <div class="confirmation-sheet" style="max-width:850px;margin:0 auto;padding:32px;border:1px solid #d9ad62;background:#28121c;color:#f6ead9;">
-      <p style="color:#d9ad62;letter-spacing:3px;font-size:11px;font-weight:700;">OIKO-LIBRIUM 2027 · STUDENTS' MEET</p>
-
-      <h2 style="font-family:'Playfair Display',serif;font-size:clamp(30px,5vw,48px);margin:12px 0;">
-        Registration <span style="color:#d9ad62;">Confirmed</span>
-      </h2>
-
-      <p style="color:#c0aeb2;margin-bottom:20px;">Your registration has been received successfully. Keep this page or print it for your records.</p>
-
-      <div style="padding:16px;border:1px solid rgba(217,173,98,.4);margin:20px 0;">
-        <div style="color:#d9ad62;font-size:11px;letter-spacing:2px;">TEAM REGISTRATION ID</div>
-        <div style="font-size:22px;font-weight:800;letter-spacing:1px;overflow-wrap:anywhere;">${escapeHtml(registrationId)}</div>
-      </div>
-
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin:20px 0;">
-        <div><small style="color:#d9ad62;">COMPETITION</small><div>${escapeHtml(chosen.name)}</div></div>
-        <div><small style="color:#d9ad62;">TEAM NAME</small><div>${escapeHtml(teamName)}</div></div>
-        <div><small style="color:#d9ad62;">COLLEGE</small><div>${escapeHtml(college)}</div></div>
-      </div>
-
-      <h3 style="font-family:'Playfair Display',serif;font-size:25px;margin:26px 0 14px;">Participant Passes</h3>
-
-      ${cards.map((person,index) => `
-        <article style="border:1px solid rgba(217,173,98,.35);padding:18px;margin:14px 0;break-inside:avoid;">
-          <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-            <strong style="color:#d9ad62;">PARTICIPANT ${index+1}${index===0 ? " · TEAM LEADER" : ""}</strong>
-            <strong style="font-size:18px;letter-spacing:1px;">${escapeHtml(person.code)}</strong>
-          </div>
-
-          <h3 style="font-size:23px;margin:10px 0;">${escapeHtml(person.name)}</h3>
-
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;color:#c0aeb2;">
-            <div><small>AGE</small><div>${escapeHtml(person.age)}</div></div>
-            <div><small>DEPARTMENT</small><div>${escapeHtml(person.department)}</div></div>
-            <div><small>COMPETITION</small><div>${escapeHtml(chosen.name)}</div></div>
-            <div><small>TEAM</small><div>${escapeHtml(teamName)}</div></div>
-          </div>
-        </article>
-      `).join("")}
-
-      <p style="color:#c0aeb2;font-size:12px;margin-top:20px;">Please retain your participant code. Present it to the organisers when required.</p>
-
-      <button type="button" id="printRegistrationPass" class="button primary" style="margin-top:20px;">Print Registration Pass</button>
-    </div>
-  `;
-
-  document.getElementById("printRegistrationPass").addEventListener("click",() => {
-    window.print();
-  });
-
-  formSection.hidden = true;
-  confirmation.hidden = false;
-  confirmation.scrollIntoView({behavior:"smooth"});
-  document.body.classList.add("showing-registration-confirmation");
-}
-
-(function addConfirmationPrintStyles() {
-  const style = document.createElement("style");
-
-  style.textContent = `
-    @media print {
-      @page { size: A4; margin: 12mm; }
-
-      body.showing-registration-confirmation * {
-        visibility:hidden !important;
-      }
-
-      body.showing-registration-confirmation #registrationConfirmation,
-      body.showing-registration-confirmation #registrationConfirmation * {
-        visibility:visible !important;
-      }
-
-      body.showing-registration-confirmation #registrationConfirmation {
-        display:block !important;
-        position:absolute;
-        left:0;
-        top:0;
-        width:100%;
-        padding:0 !important;
-        background:white !important;
-        color:#171017 !important;
-      }
-
-      body.showing-registration-confirmation .confirmation-sheet {
-        max-width:none !important;
-        border:0 !important;
-        background:white !important;
-        color:#171017 !important;
-        padding:0 !important;
-      }
-
-      body.showing-registration-confirmation #registrationConfirmation p,
-      body.showing-registration-confirmation #registrationConfirmation div,
-      body.showing-registration-confirmation #registrationConfirmation h2,
-      body.showing-registration-confirmation #registrationConfirmation h3,
-      body.showing-registration-confirmation #registrationConfirmation strong,
-      body.showing-registration-confirmation #registrationConfirmation small {
-        color:#171017 !important;
-      }
-
-      body.showing-registration-confirmation #printRegistrationPass {
-        display:none !important;
-      }
-
-      body.showing-registration-confirmation article {
-        border:1px solid #999 !important;
-      }
-    }
-  `;
-
-  document.head.appendChild(style);
-})();
-
-/*
-  Submit registration through a hidden iframe.
-
-  This avoids the browser fetch/CORS problem with Apps Script.
-  Apps Script must return an HTML page that posts:
-  {
-    type: "OIKO_REGISTRATION_RESULT",
-    data: { success, registrationId, message, requestToken }
-  }
-  to window.top.
+/* OIKO-LIBRIUM 2027 — GOOGLE FORM SETUP
+   Uses the EXISTING spreadsheet.
+   Run createOikoGoogleForm() only ONCE.
 */
 
-function createRequestToken() {
-  if (window.crypto && typeof window.crypto.randomUUID === "function") {
-    return "OL27-" + window.crypto.randomUUID();
+function createOikoGoogleForm() {
+  const props = PropertiesService.getScriptProperties();
+  const spreadsheetId = props.getProperty("DATABASE_ID");
+
+  if (!spreadsheetId) {
+    throw new Error(
+      "Existing spreadsheet ID not found. Do not run setupOikoLibrium()."
+    );
   }
 
-  return "OL27-" + Date.now() + "-" +
-    Math.random().toString(36).slice(2);
-}
+  const existingFormId = props.getProperty("OIKO_GOOGLE_FORM_ID");
 
-function getSubmissionFrame() {
-  let iframe = document.getElementById("oikoSubmitFrame");
-
-  if (!iframe) {
-    iframe = document.createElement("iframe");
-    iframe.id = "oikoSubmitFrame";
-    iframe.name = "oikoSubmitFrame";
-    iframe.title = "Registration submission";
-    iframe.style.display = "none";
-    iframe.setAttribute("aria-hidden","true");
-    document.body.appendChild(iframe);
-  }
-
-  return iframe;
-}
-
-function submitToAppsScript(payload) {
-  return new Promise((resolve,reject) => {
-    const iframe = getSubmissionFrame();
-    const requestToken = createRequestToken();
-
-    payload.requestToken = requestToken;
-
-    const postForm = document.createElement("form");
-    postForm.method = "POST";
-    postForm.action = CONFIG.API_URL;
-    postForm.target = iframe.name;
-    postForm.enctype = "application/x-www-form-urlencoded";
-    postForm.acceptCharset = "UTF-8";
-    postForm.style.display = "none";
-
-    const payloadInput = document.createElement("input");
-    payloadInput.type = "hidden";
-    payloadInput.name = "payload";
-    payloadInput.value = JSON.stringify(payload);
-
-    postForm.appendChild(payloadInput);
-    document.body.appendChild(postForm);
-
-    let completed = false;
-
-    const cleanup = () => {
-      window.removeEventListener("message",handleMessage);
-      clearTimeout(timeout);
-      postForm.remove();
-    };
-
-    const finish = (error,result) => {
-      if (completed) return;
-
-      completed = true;
-      cleanup();
-
-      if (error) {
-        reject(error);
-      } else {
-        resolve(result);
-      }
-    };
-
-    const handleMessage = event => {
-      // Accept messages only from our submission iframe.
-      if (event.source !== iframe.contentWindow) return;
-
-      const response = event.data;
-
-      if (!response || response.type !== "OIKO_REGISTRATION_RESULT") {
-        return;
-      }
-
-      const result = response.data;
-
-      if (!result || result.requestToken !== requestToken) {
-        return;
-      }
-
-      finish(null,result);
-    };
-
-    window.addEventListener("message",handleMessage);
-
-    const timeout = setTimeout(() => {
-      finish(new Error(
-        "The registration server did not respond in time. Please check your connection and contact the organisers before trying again."
-      ));
-    },CONFIG.RESPONSE_TIMEOUT);
-
-    try {
-      // Use the native form submission method.
-      HTMLFormElement.prototype.submit.call(postForm);
-    } catch (error) {
-      finish(new Error(
-        "Could not send the registration to the server: " + error.message
-      ));
-    }
-  });
-}
-
-form.addEventListener("submit",async event => {
-  event.preventDefault();
-
-  const message = document.getElementById("formMessage");
-  const submitButton = document.getElementById("submitButton");
-  const chosen = selectedEvent();
-  const cards = [...participantContainer.children];
-
-  if (!CONFIG.API_URL) {
-    message.textContent = "The registration system is not connected. Please contact the organisers.";
+  if (existingFormId) {
+    const existingForm = FormApp.openById(existingFormId);
+    Logger.log("Form already exists. No duplicate created.");
+    Logger.log("FORM URL: " + existingForm.getPublishedUrl());
+    Logger.log("EDIT URL: " + existingForm.getEditUrl());
+    Logger.log("SPREADSHEET: " +
+      SpreadsheetApp.openById(spreadsheetId).getUrl());
     return;
   }
 
-  if (!chosen) {
-    message.textContent = "Please select an event.";
-    return;
-  }
+  const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
 
-  if (cards.length < chosen.min || cards.length > chosen.max) {
-    message.textContent =
-      `${chosen.name} requires ${chosen.min === chosen.max ? chosen.min : `${chosen.min}–${chosen.max}`} participant(s).`;
-    return;
-  }
+  const form = FormApp.create(
+    "Oiko-Librium 2027 | Participant Registration"
+  );
 
-  const leaderName = document.getElementById("leaderName").value.trim();
-  const firstName = cards[0].querySelector('[name="name"]').value.trim();
+  form.setDescription(
+    "Organiser: Team OIKO-LIBRIUM\n\n" +
+    "EVENT DATE: 8 January 2027 (TENTATIVE).\n" +
+    "If the date changes, all registered participants will be informed through WhatsApp.\n\n" +
+    "REGISTRATION FEES:\n" +
+    "Standard on-campus events: ₹75 per participant, per event.\n" +
+    "Answer-tainity Quiz: ₹225.\n" +
+    "Online events: FREE.\n\n" +
+    "For team games, it will be appreciated if the total payment is made together.\n\n" +
+    "The organising committee reserves the right to disqualify any participant or team for misconduct, violation of event rules, unfair practices, or other inappropriate behaviour. The committee's decision will be final."
+  );
 
-  if (leaderName.toLowerCase() !== firstName.toLowerCase()) {
-    message.textContent =
-      "The first participant's name must match the Team Leader name above.";
-    cards[0].querySelector('[name="name"]').focus();
-    return;
-  }
+  form.setConfirmationMessage(
+    "Thank you for registering for Oiko-Librium 2027! " +
+    "Your response has been recorded."
+  );
 
-  submitButton.disabled = true;
-  addButton.disabled = true;
-  message.textContent = "Checking details and preparing College ID files…";
+  form.setAllowResponseEdits(false);
+  form.setDestination(
+    FormApp.DestinationType.SPREADSHEET,
+    spreadsheetId
+  );
 
-  try {
-    const participants = [];
-    let totalFileBytes = 0;
+  // EVENT SELECTION
+  form.addSectionHeaderItem().setTitle("01 — Event Selection");
 
-    for (const card of cards) {
-      const get = name => card.querySelector(`[name="${name}"]`);
-      const file = get("idProof").files[0];
+  form.addListItem()
+    .setTitle("Select your event")
+    .setChoiceValues([
+      "Bandopolis — Brand War",
+      "Answer-tainity — General Quiz",
+      "Diplomacia — Model United Nations",
+      "Bid-o-nomics — Mock Cricket Auction",
+      "Wunderkammer — Paper Presentation",
+      "Pen-thesis — Essay Writing (Online)",
+      "Chromanomics — Photography (Online)",
+      "Cinemanimics — Short Film (Online)"
+    ])
+    .setRequired(true);
 
-      if (!file) {
-        throw new Error("Please upload a College ID card for every participant.");
-      }
+  form.addTextItem()
+    .setTitle("Team name (write Individual if applicable)")
+    .setRequired(true);
 
-      if (file.size > CONFIG.MAX_ID_BYTES) {
-        throw new Error(`${file.name} is larger than 1 MB.`);
-      }
+  form.addTextItem()
+    .setTitle("College / Institution")
+    .setRequired(true);
 
-      totalFileBytes += file.size;
+  form.addTextItem()
+    .setTitle("Team leader's full name")
+    .setRequired(true);
 
-      if (totalFileBytes > CONFIG.MAX_TOTAL_FILE_BYTES) {
-        throw new Error("Combined College ID files must not exceed 4 MB.");
-      }
+  form.addTextItem()
+    .setTitle("Team leader's phone number")
+    .setRequired(true);
 
-      const allowed = ["image/jpeg","image/png","application/pdf"];
+  form.addTextItem()
+    .setTitle("Team leader's WhatsApp number")
+    .setRequired(true);
 
-      if (!allowed.includes(file.type)) {
-        throw new Error(`${file.name}: only JPG, PNG or PDF files are accepted.`);
-      }
+  form.addTextItem()
+    .setTitle("Team leader's email address")
+    .setRequired(true);
 
-      const age = Number(get("age").value);
+  form.addTextItem()
+    .setTitle("Number of participants")
+    .setRequired(true);
 
-      if (!Number.isInteger(age) || age < 1 || age > 100) {
-        throw new Error("Please enter a valid age for every participant.");
-      }
-
-      participants.push({
-        name: get("name").value.trim(),
-        age,
-        department: get("department").value.trim(),
-        phone: get("phone").value.trim(),
-        email: get("email").value.trim(),
-        gender: get("gender").value,
-        meal: get("meal").value,
-        idProof: {
-          mimeType: file.type,
-          base64: await readFileAsDataUrl(file)
-        }
-      });
-    }
-
-    const payload = {
-      action: "register",
-      website: "",
-      registration: {
-        eventId: chosen.id,
-        teamName: document.getElementById("teamName").value.trim(),
-        leaderName,
-        college: document.getElementById("college").value.trim(),
-        participants
-      }
-    };
-
-    message.textContent = "Submitting registration securely…";
-
-    const result = await submitToAppsScript(payload);
-
-    if (!result.success) {
-      throw new Error(result.message || "Registration could not be completed.");
-    }
-
-    if (!result.registrationId) {
-      throw new Error(
-        "The server reported success but did not return a registration ID. Please contact the organisers before submitting again."
-      );
-    }
-
-    message.textContent =
-      "Registration successful! Preparing your participant passes…";
-
-    await showRegistrationConfirmation(
-      result.registrationId,
-      chosen,
-      payload.registration.teamName,
-      payload.registration.college,
-      participants
+  // PARTICIPANT DETAILS
+  form.addSectionHeaderItem()
+    .setTitle("02 — Participant Details")
+    .setHelpText(
+      "Enter details for each team member. " +
+      "Participant 1 should be the team leader."
     );
 
-  } catch(error) {
-    message.textContent =
-      "Submission failed: " + error.message +
-      " Please contact the organisers if the problem continues.";
+  for (let i = 1; i <= 5; i++) {
+    const required = i === 1;
 
-  } finally {
-    submitButton.disabled = false;
-    updateParticipantLimit();
+    form.addSectionHeaderItem()
+      .setTitle("Participant " + i);
+
+    form.addTextItem()
+      .setTitle("Participant " + i + " — Full name")
+      .setRequired(required);
+
+    form.addTextItem()
+      .setTitle("Participant " + i + " — Age")
+      .setRequired(required);
+
+    form.addTextItem()
+      .setTitle("Participant " + i + " — Department")
+      .setRequired(required);
+
+    form.addTextItem()
+      .setTitle("Participant " + i + " — Phone")
+      .setRequired(required);
+
+    form.addTextItem()
+      .setTitle("Participant " + i + " — Email")
+      .setRequired(required);
+
+    form.addMultipleChoiceItem()
+      .setTitle("Participant " + i + " — Gender")
+      .setChoiceValues([
+        "Male",
+        "Female",
+        "Other",
+        "Prefer not to say"
+      ])
+      .setRequired(required);
+
+    form.addMultipleChoiceItem()
+      .setTitle("Participant " + i + " — Meal preference")
+      .setChoiceValues([
+        "Veg",
+        "Non-veg"
+      ])
+      .setRequired(required);
   }
-});
+
+  // PAYMENT
+  form.addSectionHeaderItem()
+    .setTitle("03 — Payment Details")
+    .setHelpText(
+      "Standard on-campus events: ₹75 per participant. " +
+      "Answer-tainity Quiz: ₹225. Online events: Free."
+    );
+
+  form.addTextItem()
+    .setTitle("Amount paid (₹) — enter 0 for online events")
+    .setRequired(true);
+
+  form.addMultipleChoiceItem()
+    .setTitle("Payment status")
+    .setChoiceValues([
+      "Paid",
+      "Online event — Free",
+      "Payment will be completed shortly"
+    ])
+    .setRequired(true);
+
+  form.addTextItem()
+    .setTitle("UPI transaction ID / Payment reference (if available)")
+    .setRequired(false);
+
+  // UPLOAD PLACEHOLDERS — ADD FILE UPLOAD QUESTIONS MANUALLY
+  form.addSectionHeaderItem()
+    .setTitle("04 — Document Uploads")
+    .setHelpText(
+      "Organisers: add two File upload questions here manually: " +
+      "College ID card(s) and Payment screenshot. " +
+      "Make the payment screenshot question optional for free online events."
+    );
+
+  // DECLARATION
+  form.addCheckboxItem()
+    .setTitle("Declaration")
+    .setChoiceValues([
+      "I confirm that the information is correct, agree to follow the event rules, and accept the organising committee's decisions."
+    ])
+    .setRequired(true);
+
+  props.setProperty("OIKO_GOOGLE_FORM_ID", form.getId());
+
+  Logger.log("GOOGLE FORM URL: " + form.getPublishedUrl());
+  Logger.log("GOOGLE FORM EDIT URL: " + form.getEditUrl());
+  Logger.log("EXISTING SPREADSHEET: " + spreadsheet.getUrl());
+}
