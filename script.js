@@ -5,7 +5,9 @@
 */
 const CONFIG = {
   API_URL: "https://script.google.com/macros/s/AKfycbycAuVsLOc6PAJpDBS5pZlXOJWDBMtj3V5KUUYKduuTpljYh8dxI8z_X-8xPMsQRraVGLg/exec",
-  MAX_ID_BYTES: 1 * 1024 * 1024
+  MAX_ID_BYTES: 1 * 1024 * 1024,
+  MAX_TOTAL_FILE_BYTES: 4 * 1024 * 1024,
+  RESPONSE_TIMEOUT: 90000
 };
 
 // Event IDs must match the Apps Script backend.
@@ -51,6 +53,7 @@ function selectedEvent() {
 function updateParticipantLimit() {
   const chosen = selectedEvent();
   const max = chosen ? chosen.max : 5;
+
   addButton.disabled = participantContainer.children.length >= max;
   addButton.textContent = addButton.disabled
     ? "Maximum participants reached"
@@ -60,6 +63,7 @@ function updateParticipantLimit() {
 eventGrid.addEventListener("click",event => {
   const button = event.target.closest("[data-event]");
   if (!button) return;
+
   eventSelect.value = button.dataset.event;
   updateParticipantLimit();
   document.getElementById("register").scrollIntoView({behavior:"smooth"});
@@ -77,23 +81,30 @@ function addParticipant() {
 
   const card = document.createElement("div");
   card.className = "participant";
+
   card.innerHTML = `
     <div class="participant-title">PARTICIPANT ${count+1} — ${count === 0 ? "TEAM LEADER" : "MEMBER"}</div>
+
     <label>Full name *
       <input name="name" required maxlength="100" autocomplete="name">
     </label>
+
     <label>Age *
       <input name="age" type="number" required min="1" max="100" step="1" inputmode="numeric">
     </label>
+
     <label>Department *
       <input name="department" required maxlength="100">
     </label>
+
     <label>Phone number *
       <input name="phone" type="tel" required maxlength="20" autocomplete="tel" pattern="[0-9 +()-]{10,20}">
     </label>
+
     <label>Email address *
       <input name="email" type="email" required maxlength="150" autocomplete="email">
     </label>
+
     <label>Gender *
       <select name="gender" required>
         <option value="">Select gender</option>
@@ -103,6 +114,7 @@ function addParticipant() {
         <option>Prefer not to say</option>
       </select>
     </label>
+
     <label>Meal preference *
       <select name="meal" required>
         <option value="">Select preference</option>
@@ -110,9 +122,11 @@ function addParticipant() {
         <option value="Non-veg">Non-vegetarian</option>
       </select>
     </label>
+
     <label>College ID card (JPG, PNG or PDF; max 1 MB) *
       <input name="idProof" type="file" accept="image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf" required>
     </label>
+
     <button class="button secondary small remove-participant" type="button">Remove participant</button>
   `;
 
@@ -137,8 +151,12 @@ function renumberParticipants() {
 function readFileAsDataUrl(file) {
   return new Promise((resolve,reject) => {
     const reader = new FileReader();
+
     reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(new Error(`Could not read ${file.name}. Please choose it again.`));
+    reader.onerror = () => reject(
+      new Error(`Could not read ${file.name}. Please choose it again.`)
+    );
+
     reader.readAsDataURL(file);
   });
 }
@@ -158,7 +176,7 @@ eventSelect.addEventListener("change",() => {
 
 addParticipant();
 
-async function makeParticipantCode(registrationId, participant) {
+async function makeParticipantCode(registrationId,participant) {
   const source = [
     registrationId,
     participant.name.trim().toLowerCase(),
@@ -167,17 +185,18 @@ async function makeParticipantCode(registrationId, participant) {
   ].join("|");
 
   const bytes = new TextEncoder().encode(source);
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  const digest = await crypto.subtle.digest("SHA-256",bytes);
+
   const hex = [...new Uint8Array(digest)]
-    .map(value => value.toString(16).padStart(2, "0"))
+    .map(value => value.toString(16).padStart(2,"0"))
     .join("")
     .toUpperCase();
 
-  return "OL27-" + hex.slice(0, 12);
+  return "OL27-" + hex.slice(0,12);
 }
 
 function escapeHtml(value) {
-  return String(value ?? "").replace(/[&<>"']/g, character => ({
+  return String(value ?? "").replace(/[&<>"']/g,character => ({
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
@@ -186,7 +205,7 @@ function escapeHtml(value) {
   })[character]);
 }
 
-async function showRegistrationConfirmation(registrationId, chosen, teamName, college, participants) {
+async function showRegistrationConfirmation(registrationId,chosen,teamName,college,participants) {
   const formSection = document.getElementById("register");
   let confirmation = document.getElementById("registrationConfirmation");
 
@@ -195,38 +214,48 @@ async function showRegistrationConfirmation(registrationId, chosen, teamName, co
     confirmation.id = "registrationConfirmation";
     confirmation.className = "section";
     confirmation.style.cssText = "background:#190b12;min-height:80vh;";
-    formSection.insertAdjacentElement("afterend", confirmation);
+    formSection.insertAdjacentElement("afterend",confirmation);
   }
 
   const cards = [];
 
   for (const participant of participants) {
-    const code = await makeParticipantCode(registrationId, participant);
+    const code = await makeParticipantCode(registrationId,participant);
     cards.push({...participant,code});
   }
 
   confirmation.innerHTML = `
     <div class="confirmation-sheet" style="max-width:850px;margin:0 auto;padding:32px;border:1px solid #d9ad62;background:#28121c;color:#f6ead9;">
       <p style="color:#d9ad62;letter-spacing:3px;font-size:11px;font-weight:700;">OIKO-LIBRIUM 2027 · STUDENTS' MEET</p>
-      <h2 style="font-family:'Playfair Display',serif;font-size:clamp(30px,5vw,48px);margin:12px 0;">Registration <span style="color:#d9ad62;">Confirmed</span></h2>
+
+      <h2 style="font-family:'Playfair Display',serif;font-size:clamp(30px,5vw,48px);margin:12px 0;">
+        Registration <span style="color:#d9ad62;">Confirmed</span>
+      </h2>
+
       <p style="color:#c0aeb2;margin-bottom:20px;">Your registration has been received successfully. Keep this page or print it for your records.</p>
+
       <div style="padding:16px;border:1px solid rgba(217,173,98,.4);margin:20px 0;">
         <div style="color:#d9ad62;font-size:11px;letter-spacing:2px;">TEAM REGISTRATION ID</div>
         <div style="font-size:22px;font-weight:800;letter-spacing:1px;overflow-wrap:anywhere;">${escapeHtml(registrationId)}</div>
       </div>
+
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin:20px 0;">
         <div><small style="color:#d9ad62;">COMPETITION</small><div>${escapeHtml(chosen.name)}</div></div>
         <div><small style="color:#d9ad62;">TEAM NAME</small><div>${escapeHtml(teamName)}</div></div>
         <div><small style="color:#d9ad62;">COLLEGE</small><div>${escapeHtml(college)}</div></div>
       </div>
+
       <h3 style="font-family:'Playfair Display',serif;font-size:25px;margin:26px 0 14px;">Participant Passes</h3>
+
       ${cards.map((person,index) => `
         <article style="border:1px solid rgba(217,173,98,.35);padding:18px;margin:14px 0;break-inside:avoid;">
           <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;">
             <strong style="color:#d9ad62;">PARTICIPANT ${index+1}${index===0 ? " · TEAM LEADER" : ""}</strong>
             <strong style="font-size:18px;letter-spacing:1px;">${escapeHtml(person.code)}</strong>
           </div>
+
           <h3 style="font-size:23px;margin:10px 0;">${escapeHtml(person.name)}</h3>
+
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;color:#c0aeb2;">
             <div><small>AGE</small><div>${escapeHtml(person.age)}</div></div>
             <div><small>DEPARTMENT</small><div>${escapeHtml(person.department)}</div></div>
@@ -235,12 +264,17 @@ async function showRegistrationConfirmation(registrationId, chosen, teamName, co
           </div>
         </article>
       `).join("")}
+
       <p style="color:#c0aeb2;font-size:12px;margin-top:20px;">Please retain your participant code. Present it to the organisers when required.</p>
+
       <button type="button" id="printRegistrationPass" class="button primary" style="margin-top:20px;">Print Registration Pass</button>
     </div>
   `;
 
-  document.getElementById("printRegistrationPass").addEventListener("click",() => window.print());
+  document.getElementById("printRegistrationPass").addEventListener("click",() => {
+    window.print();
+  });
+
   formSection.hidden = true;
   confirmation.hidden = false;
   confirmation.scrollIntoView({behavior:"smooth"});
@@ -253,17 +287,35 @@ async function showRegistrationConfirmation(registrationId, chosen, teamName, co
   style.textContent = `
     @media print {
       @page { size: A4; margin: 12mm; }
-      body.showing-registration-confirmation * { visibility:hidden !important; }
+
+      body.showing-registration-confirmation * {
+        visibility:hidden !important;
+      }
+
       body.showing-registration-confirmation #registrationConfirmation,
-      body.showing-registration-confirmation #registrationConfirmation * { visibility:visible !important; }
+      body.showing-registration-confirmation #registrationConfirmation * {
+        visibility:visible !important;
+      }
+
       body.showing-registration-confirmation #registrationConfirmation {
-        display:block !important; position:absolute; left:0; top:0; width:100%;
-        padding:0 !important; background:white !important; color:#171017 !important;
+        display:block !important;
+        position:absolute;
+        left:0;
+        top:0;
+        width:100%;
+        padding:0 !important;
+        background:white !important;
+        color:#171017 !important;
       }
+
       body.showing-registration-confirmation .confirmation-sheet {
-        max-width:none !important; border:0 !important; background:white !important;
-        color:#171017 !important; padding:0 !important;
+        max-width:none !important;
+        border:0 !important;
+        background:white !important;
+        color:#171017 !important;
+        padding:0 !important;
       }
+
       body.showing-registration-confirmation #registrationConfirmation p,
       body.showing-registration-confirmation #registrationConfirmation div,
       body.showing-registration-confirmation #registrationConfirmation h2,
@@ -272,13 +324,138 @@ async function showRegistrationConfirmation(registrationId, chosen, teamName, co
       body.showing-registration-confirmation #registrationConfirmation small {
         color:#171017 !important;
       }
-      body.showing-registration-confirmation #printRegistrationPass { display:none !important; }
-      body.showing-registration-confirmation article { border:1px solid #999 !important; }
+
+      body.showing-registration-confirmation #printRegistrationPass {
+        display:none !important;
+      }
+
+      body.showing-registration-confirmation article {
+        border:1px solid #999 !important;
+      }
     }
   `;
 
   document.head.appendChild(style);
 })();
+
+/*
+  Submit registration through a hidden iframe.
+
+  This avoids the browser fetch/CORS problem with Apps Script.
+  Apps Script must return an HTML page that posts:
+  {
+    type: "OIKO_REGISTRATION_RESULT",
+    data: { success, registrationId, message, requestToken }
+  }
+  to window.top.
+*/
+
+function createRequestToken() {
+  if (window.crypto && typeof window.crypto.randomUUID === "function") {
+    return "OL27-" + window.crypto.randomUUID();
+  }
+
+  return "OL27-" + Date.now() + "-" +
+    Math.random().toString(36).slice(2);
+}
+
+function getSubmissionFrame() {
+  let iframe = document.getElementById("oikoSubmitFrame");
+
+  if (!iframe) {
+    iframe = document.createElement("iframe");
+    iframe.id = "oikoSubmitFrame";
+    iframe.name = "oikoSubmitFrame";
+    iframe.title = "Registration submission";
+    iframe.style.display = "none";
+    iframe.setAttribute("aria-hidden","true");
+    document.body.appendChild(iframe);
+  }
+
+  return iframe;
+}
+
+function submitToAppsScript(payload) {
+  return new Promise((resolve,reject) => {
+    const iframe = getSubmissionFrame();
+    const requestToken = createRequestToken();
+
+    payload.requestToken = requestToken;
+
+    const postForm = document.createElement("form");
+    postForm.method = "POST";
+    postForm.action = CONFIG.API_URL;
+    postForm.target = iframe.name;
+    postForm.enctype = "application/x-www-form-urlencoded";
+    postForm.acceptCharset = "UTF-8";
+    postForm.style.display = "none";
+
+    const payloadInput = document.createElement("input");
+    payloadInput.type = "hidden";
+    payloadInput.name = "payload";
+    payloadInput.value = JSON.stringify(payload);
+
+    postForm.appendChild(payloadInput);
+    document.body.appendChild(postForm);
+
+    let completed = false;
+
+    const cleanup = () => {
+      window.removeEventListener("message",handleMessage);
+      clearTimeout(timeout);
+      postForm.remove();
+    };
+
+    const finish = (error,result) => {
+      if (completed) return;
+
+      completed = true;
+      cleanup();
+
+      if (error) {
+        reject(error);
+      } else {
+        resolve(result);
+      }
+    };
+
+    const handleMessage = event => {
+      // Accept messages only from our submission iframe.
+      if (event.source !== iframe.contentWindow) return;
+
+      const response = event.data;
+
+      if (!response || response.type !== "OIKO_REGISTRATION_RESULT") {
+        return;
+      }
+
+      const result = response.data;
+
+      if (!result || result.requestToken !== requestToken) {
+        return;
+      }
+
+      finish(null,result);
+    };
+
+    window.addEventListener("message",handleMessage);
+
+    const timeout = setTimeout(() => {
+      finish(new Error(
+        "The registration server did not respond in time. Please check your connection and contact the organisers before trying again."
+      ));
+    },CONFIG.RESPONSE_TIMEOUT);
+
+    try {
+      // Use the native form submission method.
+      HTMLFormElement.prototype.submit.call(postForm);
+    } catch (error) {
+      finish(new Error(
+        "Could not send the registration to the server: " + error.message
+      ));
+    }
+  });
+}
 
 form.addEventListener("submit",async event => {
   event.preventDefault();
@@ -299,7 +476,8 @@ form.addEventListener("submit",async event => {
   }
 
   if (cards.length < chosen.min || cards.length > chosen.max) {
-    message.textContent = `${chosen.name} requires ${chosen.min === chosen.max ? chosen.min : `${chosen.min}–${chosen.max}`} participant(s).`;
+    message.textContent =
+      `${chosen.name} requires ${chosen.min === chosen.max ? chosen.min : `${chosen.min}–${chosen.max}`} participant(s).`;
     return;
   }
 
@@ -307,7 +485,8 @@ form.addEventListener("submit",async event => {
   const firstName = cards[0].querySelector('[name="name"]').value.trim();
 
   if (leaderName.toLowerCase() !== firstName.toLowerCase()) {
-    message.textContent = "The first participant's name must match the Team Leader name above.";
+    message.textContent =
+      "The first participant's name must match the Team Leader name above.";
     cards[0].querySelector('[name="name"]').focus();
     return;
   }
@@ -334,7 +513,7 @@ form.addEventListener("submit",async event => {
 
       totalFileBytes += file.size;
 
-      if (totalFileBytes > 4 * 1024 * 1024) {
+      if (totalFileBytes > CONFIG.MAX_TOTAL_FILE_BYTES) {
         throw new Error("Combined College ID files must not exceed 4 MB.");
       }
 
@@ -377,21 +556,22 @@ form.addEventListener("submit",async event => {
       }
     };
 
-    message.textContent = "Submitting registration…";
+    message.textContent = "Submitting registration securely…";
 
-    const response = await fetch(CONFIG.API_URL,{
-      method:"POST",
-      headers:{"Content-Type":"text/plain;charset=utf-8"},
-      body:JSON.stringify(payload)
-    });
+    const result = await submitToAppsScript(payload);
 
-    const result = await response.json();
-
-    if (!response.ok || !result.success) {
+    if (!result.success) {
       throw new Error(result.message || "Registration could not be completed.");
     }
 
-    message.textContent = "Registration successful! Preparing your participant passes…";
+    if (!result.registrationId) {
+      throw new Error(
+        "The server reported success but did not return a registration ID. Please contact the organisers before submitting again."
+      );
+    }
+
+    message.textContent =
+      "Registration successful! Preparing your participant passes…";
 
     await showRegistrationConfirmation(
       result.registrationId,
@@ -402,7 +582,10 @@ form.addEventListener("submit",async event => {
     );
 
   } catch(error) {
-    message.textContent = "Submission failed: " + error.message + " Please contact the organisers if the problem continues.";
+    message.textContent =
+      "Submission failed: " + error.message +
+      " Please contact the organisers if the problem continues.";
+
   } finally {
     submitButton.disabled = false;
     updateParticipantLimit();
