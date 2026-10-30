@@ -1,13 +1,14 @@
+
 /*
   Oiko-Librium 2027 registration frontend.
-  Backend URL is already filled in. Do not change it unless you redeploy Apps Script.
+  Connected to the confirmed Apps Script deployment.
 */
 const CONFIG = {
   API_URL: "https://script.google.com/macros/s/AKfycbycAuVsLOc6PAJpDBS5pZlXOJWDBMtj3V5KUUYKduuTpljYh8dxI8z_X-8xPMsQRraVGLg/exec",
   MAX_ID_BYTES: 1 * 1024 * 1024
 };
 
-// IMPORTANT: IDs here are lowercase because the Apps Script backend uses lowercase keys.
+// Event IDs must match the Apps Script backend.
 const EVENTS = [
   {id:"bandopolis",name:"Bandopolis",category:"BRAND WAR",description:"Pit two competing brands against each other. Build your argument, defend your brand and answer the jury.",team:"2 members",mode:"On campus",min:2,max:2},
   {id:"answer_tainity",name:"Answer-tainity",category:"GENERAL QUIZ",description:"A general quiz with an economics streak. Written preliminaries followed by a stage final for the top six teams.",team:"1–3 members",mode:"On campus",min:1,max:3},
@@ -51,7 +52,9 @@ function updateParticipantLimit() {
   const chosen = selectedEvent();
   const max = chosen ? chosen.max : 5;
   addButton.disabled = participantContainer.children.length >= max;
-  addButton.textContent = addButton.disabled ? "Maximum participants reached" : "+ Add participant";
+  addButton.textContent = addButton.disabled
+    ? "Maximum participants reached"
+    : "+ Add participant";
 }
 
 eventGrid.addEventListener("click",event => {
@@ -66,6 +69,7 @@ function addParticipant() {
   const chosen = selectedEvent();
   const max = chosen ? chosen.max : 5;
   const count = participantContainer.children.length;
+
   if (count >= max) {
     alert(`This event allows a maximum of ${max} participant(s).`);
     return;
@@ -117,6 +121,7 @@ function addParticipant() {
     renumberParticipants();
     updateParticipantLimit();
   });
+
   participantContainer.appendChild(card);
   renumberParticipants();
   updateParticipantLimit();
@@ -143,14 +148,15 @@ addButton.addEventListener("click",addParticipant);
 eventSelect.addEventListener("change",() => {
   const chosen = selectedEvent();
   const count = participantContainer.children.length;
+
   if (chosen && count > chosen.max) {
     alert(`This event allows at most ${chosen.max} participant(s). Please remove the extra participant(s).`);
   }
+
   updateParticipantLimit();
 });
 
 addParticipant();
-
 
 async function makeParticipantCode(registrationId, participant) {
   const source = [
@@ -172,7 +178,11 @@ async function makeParticipantCode(registrationId, participant) {
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, character => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
   })[character]);
 }
 
@@ -189,9 +199,10 @@ async function showRegistrationConfirmation(registrationId, chosen, teamName, co
   }
 
   const cards = [];
+
   for (const participant of participants) {
     const code = await makeParticipantCode(registrationId, participant);
-    cards.push({ ...participant, code });
+    cards.push({...participant,code});
   }
 
   confirmation.innerHTML = `
@@ -238,6 +249,7 @@ async function showRegistrationConfirmation(registrationId, chosen, teamName, co
 
 (function addConfirmationPrintStyles() {
   const style = document.createElement("style");
+
   style.textContent = `
     @media print {
       @page { size: A4; margin: 12mm; }
@@ -264,6 +276,7 @@ async function showRegistrationConfirmation(registrationId, chosen, teamName, co
       body.showing-registration-confirmation article { border:1px solid #999 !important; }
     }
   `;
+
   document.head.appendChild(style);
 })();
 
@@ -279,18 +292,20 @@ form.addEventListener("submit",async event => {
     message.textContent = "The registration system is not connected. Please contact the organisers.";
     return;
   }
+
   if (!chosen) {
     message.textContent = "Please select an event.";
     return;
   }
+
   if (cards.length < chosen.min || cards.length > chosen.max) {
     message.textContent = `${chosen.name} requires ${chosen.min === chosen.max ? chosen.min : `${chosen.min}–${chosen.max}`} participant(s).`;
     return;
   }
 
-  // Backend checks that the first participant is the team leader.
   const leaderName = document.getElementById("leaderName").value.trim();
   const firstName = cards[0].querySelector('[name="name"]').value.trim();
+
   if (leaderName.toLowerCase() !== firstName.toLowerCase()) {
     message.textContent = "The first participant's name must match the Team Leader name above.";
     cards[0].querySelector('[name="name"]').focus();
@@ -309,19 +324,28 @@ form.addEventListener("submit",async event => {
       const get = name => card.querySelector(`[name="${name}"]`);
       const file = get("idProof").files[0];
 
-      if (!file) throw new Error("Please upload a College ID card for every participant.");
-      if (file.size > CONFIG.MAX_ID_BYTES) throw new Error(`${file.name} is larger than 1 MB.`);
+      if (!file) {
+        throw new Error("Please upload a College ID card for every participant.");
+      }
+
+      if (file.size > CONFIG.MAX_ID_BYTES) {
+        throw new Error(`${file.name} is larger than 1 MB.`);
+      }
+
       totalFileBytes += file.size;
+
       if (totalFileBytes > 4 * 1024 * 1024) {
         throw new Error("Combined College ID files must not exceed 4 MB.");
       }
 
       const allowed = ["image/jpeg","image/png","application/pdf"];
+
       if (!allowed.includes(file.type)) {
         throw new Error(`${file.name}: only JPG, PNG or PDF files are accepted.`);
       }
 
       const age = Number(get("age").value);
+
       if (!Number.isInteger(age) || age < 1 || age > 100) {
         throw new Error("Please enter a valid age for every participant.");
       }
@@ -343,7 +367,7 @@ form.addEventListener("submit",async event => {
 
     const payload = {
       action: "register",
-      website: "", // Empty honeypot field required by the Apps Script endpoint.
+      website: "",
       registration: {
         eventId: chosen.id,
         teamName: document.getElementById("teamName").value.trim(),
@@ -354,18 +378,21 @@ form.addEventListener("submit",async event => {
     };
 
     message.textContent = "Submitting registration…";
+
     const response = await fetch(CONFIG.API_URL,{
-      method: "POST",
-      headers: {"Content-Type":"text/plain;charset=utf-8"},
-      body: JSON.stringify(payload)
+      method:"POST",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify(payload)
     });
 
     const result = await response.json();
+
     if (!response.ok || !result.success) {
       throw new Error(result.message || "Registration could not be completed.");
     }
 
     message.textContent = "Registration successful! Preparing your participant passes…";
+
     await showRegistrationConfirmation(
       result.registrationId,
       chosen,
